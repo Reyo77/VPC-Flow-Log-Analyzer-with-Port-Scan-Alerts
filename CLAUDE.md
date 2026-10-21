@@ -18,7 +18,7 @@ Then prove it: bring Project 1's network up, run my own port scanner against my 
 
 - OS: macOS. Python 3.11+ in a virtual environment (system python3 is 3.15.0; check wheels in Phase 1).
 - AWS region: **ap-southeast-2** (same as the Project 1 logging bucket, found in Phase 0). Use only this region.
-- Log source: bucket `p1-flowlogs-228998979209` (read-only). 33 objects at Phase 0 (2026-10-20 .. 2026-10-21), expire after 30 days (earliest ~2026-11-19). Flow logs from Project 1's and Project 2's VPCs.
+- Log source: bucket `p1-flowlogs-<account-id>` (read-only). 33 objects at Phase 0 (2026-10-20 .. 2026-10-21), expire after 30 days (earliest ~2026-11-19). Flow logs from Project 1's and Project 2's VPCs.
 - Flow log format: AWS default (version 2), 14 fields:
   `version account-id interface-id srcaddr dstaddr srcport dstport protocol packets bytes start end action log-status`
 - Project 1 repo (traffic generation): `~/projects/aws-multi-vpc-terraform`
