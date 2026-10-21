@@ -69,6 +69,48 @@ def cmd_summary(args) -> int:
     return 0
 
 
+def cmd_detect(args) -> int:
+    import json
+
+    from .core import detect as det
+
+    records, keys, bucket = load_records(args)
+    allow = [ip for chunk in args.allow for ip in chunk.split(",") if ip]
+    th = det.Thresholds(
+        scan_ports=args.scan_ports,
+        scan_window=args.scan_window,
+        sweep_hosts=args.sweep_hosts,
+        ssh_connections=args.ssh_connections,
+    )
+    findings = det.detect(records, th, allow)
+    print(f"{bucket}: {len(keys)} files, {len(records)} records, last {args.days} day(s)")
+    if allow:
+        print(f"ignored sources (allowlist): {', '.join(allow)}")
+    if not findings:
+        print("no findings")
+    for f in findings:
+        more = " ..." if len(f.targets) > 3 else ""
+        print(f"\n[{f.severity.upper()}] {f.type}  {f.source} -> {', '.join(f.targets[:3])}{more}")
+        print(f"  ports: {f.ports}")
+        seen = f"{det._iso(f.first_seen)} -> {det._iso(f.last_seen)}"
+        print(f"  seen:  {seen}   records={f.records} accept={f.accepts} reject={f.rejects}")
+        print(f"  {f.detail}")
+    out = Path(args.output)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "bucket": bucket,
+        "days": args.days,
+        "records": len(records),
+        "thresholds": th.__dict__,
+        "allowlist": allow,
+        "findings": [f.to_dict() for f in findings],
+    }
+    out.write_text(json.dumps(payload, indent=2))
+    print(f"\nwrote {out} ({len(findings)} findings)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="flowlog_analyzer", description="Analyze VPC Flow Logs from S3.")
     sub = p.add_subparsers(dest="command", required=True)
@@ -80,13 +122,29 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--region", default=DEFAULT_REGION)
         sp.add_argument("--cache-dir", default=str(DEFAULT_CACHE))
 
+    def detect_opts(sp):
+        sp.add_argument(
+            "--allow",
+            action="append",
+            default=[],
+            help="source IP(s) to ignore, comma separated (repeatable)",
+        )
+        sp.add_argument("--scan-ports", type=int, default=15)
+        sp.add_argument("--scan-window", type=int, default=300)
+        sp.add_argument("--sweep-hosts", type=int, default=5)
+        sp.add_argument("--ssh-connections", type=int, default=20)
+        sp.add_argument("--output", default="reports/findings.json")
+
     for name, helptext in [
         ("fetch", "download logs and print what was found"),
         ("summary", "print top talkers, ports and rejects"),
         ("detect", "run port-scan detection and write reports/findings.json"),
         ("dashboard", "build reports/dashboard.html"),
     ]:
-        common(sub.add_parser(name, help=helptext))
+        sp = sub.add_parser(name, help=helptext)
+        common(sp)
+        if name in ("detect", "dashboard"):
+            detect_opts(sp)
     return p
 
 
@@ -96,6 +154,8 @@ def main(argv=None) -> int:
         return cmd_fetch(args)
     if args.command == "summary":
         return cmd_summary(args)
+    if args.command == "detect":
+        return cmd_detect(args)
     print(f"'{args.command}' is not built yet")
     return 1
 

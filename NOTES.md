@@ -12,3 +12,9 @@
 - 26 tests total. Live data: 2367 flows, 710 rejects (30%), 450 unique sources (443 external).
 - Findings in the real data: 31 MB flows from AWS/Canonical addresses are package downloads (apt) to the firewalls; UDP 123 is the most rejected port (apps trying public NTP); TCP 23 and 3389 rejects come from many different internet scanners; the long idle gap overnight shows as zero buckets.
 - Lessons for detection: (1) return traffic of accepted downloads looks like "many ports" from one source, so the scan rule must require mostly-REJECT; (2) my own Mac's IP is an "external" source on port 22, so the SSH rule needs an allowlist.
+
+## Phase 5: Detection (passed)
+- `core/detect.py`: vertical scan, horizontal sweep, SSH brute force; sliding time window; reject-ratio filter; `--allow` list. 51 tests (positive, negative, boundaries, two attackers, two bursts, allowlist, unsorted input).
+- Bug found by a test: two bursts hours apart were merged into one finding because neighbouring flagged records were joined without checking the gap. Fixed.
+- Live run on real data (no allowlist): 2 "SSH brute force" findings that are my own Mac (152.58.35.206 on 20 Oct, 152.59.37.52 on 21 Oct) connecting to my own firewalls during tests, and 2 "sweeps" from 10.0.0.83 (Project 1's bastion) whose outbound HTTPS/NTP was blocked by its own security group. With my IPs allowlisted: only the 2 low-severity egress findings remain. Sweeps from an internal host to internet-only targets are now `low`.
+- Known false positives: my own IPs (use `--allow`), internal hosts with blocked egress, vulnerability scanners we run ourselves.
