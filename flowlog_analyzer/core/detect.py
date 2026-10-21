@@ -196,7 +196,10 @@ def find_port_sweeps(records: Iterable[FlowRecord], th: Thresholds, allow: set[s
             if is_private(src) and not any(is_private(h) for h in hosts):
                 # one of OUR hosts is being blocked going out; this is not someone scanning us
                 severity = "low"
-                detail += " The source is an internal host trying to reach the internet: likely blocked egress, not a scan."
+                detail += (
+                    " The source is an internal host trying to reach the internet:"
+                    " likely blocked egress, not a scan."
+                )
             out.append(
                 Finding(
                     "port_sweep",

@@ -111,6 +111,26 @@ def cmd_detect(args) -> int:
     return 0
 
 
+def cmd_dashboard(args) -> int:
+    from . import analysis, dashboard
+    from .core import detect as det
+
+    records, keys, bucket = load_records(args)
+    allow = [ip for chunk in args.allow for ip in chunk.split(",") if ip]
+    th = det.Thresholds(
+        scan_ports=args.scan_ports,
+        scan_window=args.scan_window,
+        sweep_hosts=args.sweep_hosts,
+        ssh_connections=args.ssh_connections,
+    )
+    findings = det.detect(records, th, allow)
+    df = analysis.to_dataframe(records)
+    period = f"{bucket}, last {args.days} day(s), {len(keys)} log files"
+    out = dashboard.write_dashboard(df, findings, args.html, "VPC Flow Log Analyzer", period)
+    print(f"wrote {out} ({out.stat().st_size // 1024} KB, {len(records)} records, {len(findings)} findings)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="flowlog_analyzer", description="Analyze VPC Flow Logs from S3.")
     sub = p.add_subparsers(dest="command", required=True)
@@ -134,6 +154,7 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--sweep-hosts", type=int, default=5)
         sp.add_argument("--ssh-connections", type=int, default=20)
         sp.add_argument("--output", default="reports/findings.json")
+        sp.add_argument("--html", default="reports/dashboard.html", help="dashboard output file")
 
     for name, helptext in [
         ("fetch", "download logs and print what was found"),
@@ -156,6 +177,8 @@ def main(argv=None) -> int:
         return cmd_summary(args)
     if args.command == "detect":
         return cmd_detect(args)
+    if args.command == "dashboard":
+        return cmd_dashboard(args)
     print(f"'{args.command}' is not built yet")
     return 1
 
