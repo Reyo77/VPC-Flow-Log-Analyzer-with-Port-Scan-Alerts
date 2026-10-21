@@ -50,6 +50,25 @@ def cmd_fetch(args) -> int:
     return 0
 
 
+def cmd_summary(args) -> int:
+    from . import analysis
+
+    records, keys, bucket = load_records(args)
+    if not records:
+        print("no records found for that period")
+        return 1
+    df = analysis.to_dataframe(records)
+    print(f"{bucket}: {len(keys)} files, last {args.days} day(s)")
+    print("KPIs:", analysis.kpis(df))
+    for title, table in analysis.summary_tables(df).items():
+        if title.startswith("Rejects over time"):
+            table = table[table["rejects"] > 0]  # skip the long idle stretches
+            title += ", only buckets with rejects"
+        print(f"\n=== {title} ===")
+        print(table.to_string(index=False) if len(table) else "(none)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="flowlog_analyzer", description="Analyze VPC Flow Logs from S3.")
     sub = p.add_subparsers(dest="command", required=True)
@@ -75,6 +94,8 @@ def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "fetch":
         return cmd_fetch(args)
+    if args.command == "summary":
+        return cmd_summary(args)
     print(f"'{args.command}' is not built yet")
     return 1
 
