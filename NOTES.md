@@ -18,3 +18,9 @@
 - Bug found by a test: two bursts hours apart were merged into one finding because neighbouring flagged records were joined without checking the gap. Fixed.
 - Live run on real data (no allowlist): 2 "SSH brute force" findings that are my own Mac (152.58.35.206 on 20 Oct, 152.59.37.52 on 21 Oct) connecting to my own firewalls during tests, and 2 "sweeps" from 10.0.0.83 (Project 1's bastion) whose outbound HTTPS/NTP was blocked by its own security group. With my IPs allowlisted: only the 2 low-severity egress findings remain. Sweeps from an internal host to internet-only targets are now `low`.
 - Known false positives: my own IPs (use `--allow`), internal hosts with blocked egress, vulnerability scanners we run ourselves.
+
+## Phase 6: Dashboard (passed)
+- `dashboard.py`: one HTML file (4.7 MB, plotly.js embedded): KPI cards, findings table (severity coloured, HTML-escaped), rejects over time, top talkers, top rejected ports, internal vs external tables. 4 tests (sections present, escaping, empty data). Built from real data and opened with `open reports/dashboard.html`.
+
+## Phase 7 tools (built; real-traffic run pending approval)
+- `tools/portscan.py`: stdlib TCP connect scanner, refuses anything outside 10.0.0.0/8, max 1024 ports, writes a ground-truth JSON. `tools/validate.py`: PASS/FAIL against `findings.json` (source, target, time window, port count, open ports). 7 tests.
